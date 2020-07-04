@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
 /**TODO:
@@ -34,10 +36,16 @@ type Server struct {
 	Handler   http.Handler
 }
 
+type MyUserItem struct {
+	TestId    string
+	CreatedAt int
+	Username  string
+}
+
+//Fields of Struct has to start as capital
 type Item struct {
-	userId    string
-	createdAt int
-	username  string
+	UserId   string
+	Username string
 }
 
 func (s *Server) Start() {
@@ -48,26 +56,77 @@ func (s *Server) Start() {
 	// Create DynamoDB client
 	svc := dynamodb.New(sess)
 
-	tableName := "MyUsers"
-	getUser := "1a2b3c4d"
+	//Put item
+	// tableName := "TestTable3"
+	// // testId := "asdf1234"
 
-	result, err := svc.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(tableName),
-		Key: map[string]*dynamodb.AttributeValue{
-			"userId": {
-				S: aws.String(getUser),
-			},
-			// "userId": aws.String(getUser),
-		},
-	})
+	// // If a DynamoDB table has a partition key and a sort key, you can't use GetItem to get a single item in your table. You need to use something called Query.
+	// result, err := svc.GetItem(&dynamodb.GetItemInput{
+	// 	TableName: aws.String(tableName),
+	// 	Key: map[string]*dynamodb.AttributeValue{
+	// 		// M: aws.Map(mapQuery),
+	// 		"UserId": {
+	// 			S: aws.String("asdf1234"),
+	// 		},
+	// 	},
+	// })
 
-	log.Println("b", result)
+	// if err != nil {
+	// 	fmt.Println(err.Error())
+	// 	return
+	// }
+
+	// item := Item{}
+
+	// err = dynamodbattribute.UnmarshalMap(result.Item, &item)
+	// if err != nil {
+	// 	panic(fmt.Sprintf("Failed to unmarshal Record, %v", err))
+	// }
+
+	// fmt.Println("Found item:")
+	// fmt.Println("TestId:  ", item.UserId)
+	// fmt.Println("Created: ", item.Username)
+
+	// ---- Put item
+	item := Item{
+		UserId:   "aaaaa11111",
+		Username: "1234567890",
+	}
+
+	fmt.Println(item)
+
+	av, err := dynamodbattribute.MarshalMap(item)
+	if err != nil {
+		fmt.Println("Got error marshalling new movie item:")
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
+	fmt.Println("length is: ", len(av))
+	log.Println("b", av)
 
 	if err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 
+	tableName := "TestTable3"
+
+	input := &dynamodb.PutItemInput{
+		Item:      av,
+		TableName: aws.String(tableName),
+	}
+
+	_, err = svc.PutItem(input)
+	if err != nil {
+		fmt.Println("Got error calling PutItem:")
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+
+	fmt.Println("Successfully added '" + item.UserId + "' (" + item.Username + ") to table " + tableName)
+
+	//Other
 	creds, err := sess.Config.Credentials.Get()
 	if err != nil {
 		log.Fatal("a", err) //TODO: panic and recover
