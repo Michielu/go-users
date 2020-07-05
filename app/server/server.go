@@ -2,15 +2,10 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
+	"github.com/Michielu/go-users/app/database"
 )
 
 /**TODO:
@@ -49,89 +44,35 @@ type Item struct {
 }
 
 func (s *Server) Start() {
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("us-west-2")},
-	)
+	var db *database.Database
+	var err error
+
+	db, err = database.Connect()
+
+	if err != nil {
+		log.Fatal(err) //TODO: panic and recover
+	}
+
+	db.GetUser("asdf1234")
+
+	userId := "aaaaa11112"
+	username := "testuername"
+
+	db.PostUser(userId, username)
+
+	// sess, err := session.NewSession(&aws.Config{
+	// 	Region: aws.String("us-west-2")},
+	// )
 
 	// Create DynamoDB client
-	svc := dynamodb.New(sess)
-
-	//Put item
-	// tableName := "TestTable3"
-	// // testId := "asdf1234"
-
-	// // If a DynamoDB table has a partition key and a sort key, you can't use GetItem to get a single item in your table. You need to use something called Query.
-	// result, err := svc.GetItem(&dynamodb.GetItemInput{
-	// 	TableName: aws.String(tableName),
-	// 	Key: map[string]*dynamodb.AttributeValue{
-	// 		// M: aws.Map(mapQuery),
-	// 		"UserId": {
-	// 			S: aws.String("asdf1234"),
-	// 		},
-	// 	},
-	// })
-
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// 	return
-	// }
-
-	// item := Item{}
-
-	// err = dynamodbattribute.UnmarshalMap(result.Item, &item)
-	// if err != nil {
-	// 	panic(fmt.Sprintf("Failed to unmarshal Record, %v", err))
-	// }
-
-	// fmt.Println("Found item:")
-	// fmt.Println("TestId:  ", item.UserId)
-	// fmt.Println("Created: ", item.Username)
-
-	// ---- Put item
-	item := Item{
-		UserId:   "aaaaa11111",
-		Username: "1234567890",
-	}
-
-	fmt.Println(item)
-
-	av, err := dynamodbattribute.MarshalMap(item)
-	if err != nil {
-		fmt.Println("Got error marshalling new movie item:")
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Println("length is: ", len(av))
-	log.Println("b", av)
-
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	tableName := "TestTable3"
-
-	input := &dynamodb.PutItemInput{
-		Item:      av,
-		TableName: aws.String(tableName),
-	}
-
-	_, err = svc.PutItem(input)
-	if err != nil {
-		fmt.Println("Got error calling PutItem:")
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-
-	fmt.Println("Successfully added '" + item.UserId + "' (" + item.Username + ") to table " + tableName)
+	// svc := dynamodb.New(*db.session)
 
 	//Other
-	creds, err := sess.Config.Credentials.Get()
-	if err != nil {
-		log.Fatal("a", err) //TODO: panic and recover
-	}
-	log.Println("a", creds)
+	// creds, err := *db.Session.Config.Credentials.Get()
+	// if err != nil {
+	// 	log.Fatal("a", err) //TODO: panic and recover
+	// }
+	log.Println("a", *db.Service)
 	http.HandleFunc("/", HelloServer)
 	// log.Fatal(creds)
 
