@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/Michielu/go-users/app/modals"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -14,7 +15,6 @@ import (
 type Database struct {
 	Session *session.Session
 	Service *dynamodb.DynamoDB
-	// service *dynamodb
 }
 
 type Item struct {
@@ -22,14 +22,10 @@ type Item struct {
 	Username string
 }
 
-// Datastore represents a store for the data (Database session)
-// type Datastore struct {
-// 	session *session.Session
-// 	name    string
-// }
+var DB_NAME string = "MasterUsers"
 
 func Connect() (*Database, error) {
-	log.Printf("Connecting to Database")
+	log.Printf("Connecting to Database %s", DB_NAME)
 	sess, err := session.NewSession(&aws.Config{
 		Region: aws.String("us-west-2")},
 	)
@@ -40,22 +36,21 @@ func Connect() (*Database, error) {
 	}
 
 	log.Println("Connected to Database")
+
+	// Create DynamoDB client
 	svc := dynamodb.New(sess)
-	// log.Printf(svc)
 
 	return &Database{Session: sess, Service: svc}, nil
 }
 
-func (db *Database) GetUser(userId string) {
-	tableName := "TestTable3"
-
+func (db *Database) GetMasterUser(userId string) (*modals.MasterUser, error) {
 	svc := *db.Service
 
-	// If a DynamoDB table has a partition key and a sort key, you can't use GetItem to get a single item in your table. You need to use something called Query.
+	// If a DynamoDB table has a partition key and a sort key, can't use GetItem to get a single item in table.
+	// Need to use Query.
 	result, err := svc.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(tableName),
+		TableName: aws.String(DB_NAME),
 		Key: map[string]*dynamodb.AttributeValue{
-			// M: aws.Map(mapQuery),
 			"UserId": {
 				S: aws.String(userId),
 			},
@@ -64,51 +59,44 @@ func (db *Database) GetUser(userId string) {
 
 	if err != nil {
 		fmt.Println(err.Error())
-		// return
+		return nil, err
 	}
 
-	item := Item{}
+	masterUser := modals.MasterUser{}
 
-	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
+	err = dynamodbattribute.UnmarshalMap(result.Item, &masterUser)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to unmarshal Record, %v", err))
 	}
 
-	fmt.Println("Found item:")
-	fmt.Println("TestId:  ", item.UserId)
-	fmt.Println("Created: ", item.Username)
+	return &masterUser, nil
 }
 
-func (db *Database) PostUser(userId string, username string) {
+func (db *Database) CreateMasterUser(newMasterUser modals.MasterUser) (*modals.MasterUser, error) {
 	svc := *db.Service
 
-	item := Item{
-		UserId:   userId,
-		Username: username,
+	//TODO remove hardcode
+	item := modals.MasterUser{
+		Apps:      []string{"CREDIT_CARD"},
+		CreatedAt: 12312333333,
+		Email:     "exampleEmail@anotheremail.com",
+		UserId:    "exampleUserID2",
+		Username:  "exampleUsername2",
+		Password:  "exmaplePassword123",
 	}
 
-	fmt.Println(item)
+	// fmt.Println(item)
 
 	av, err := dynamodbattribute.MarshalMap(item)
 	if err != nil {
-		fmt.Println("Got error marshalling new movie item:")
+		fmt.Println("Got error marshalling new master user:")
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
-	fmt.Println("length is: ", len(av))
-	log.Println("b", av)
-
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	tableName := "TestTable3"
-
 	input := &dynamodb.PutItemInput{
 		Item:      av,
-		TableName: aws.String(tableName),
+		TableName: aws.String(DB_NAME),
 	}
 
 	_, err = svc.PutItem(input)
@@ -118,7 +106,10 @@ func (db *Database) PostUser(userId string, username string) {
 		os.Exit(1)
 	}
 
-	fmt.Println("Successfully added '" + item.UserId + "' (" + item.Username + ") to table " + tableName)
+	fmt.Println("Successfully added '" + item.UserId + "' (" + item.Username + ") to table " + DB_NAME)
+
+	return &item, nil
+
 }
 
 // Close kills the current session and ends the Database connection
