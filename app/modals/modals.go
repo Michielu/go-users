@@ -7,7 +7,7 @@ import (
 
 type MasterUser struct {
 	Apps      []string
-	CreatedAt int
+	CreatedAt int64
 	Email     string
 	UserId    string
 	Username  string
@@ -23,3 +23,13 @@ type SimpleResponse struct {
 	Success      bool   `json:"success"`
 	ShortMessage string `json:"shortMessage"`
 }
+
+// //TODO figu
+// type ClientError struct {
+// 	Type    int    `json:"code,omitempty"`
+// 	Message string `json:"message,omitempty"`
+// }
+
+// func (e *ErrorResponse) Error() string {
+// 	return fmt.Sprintf("Invalid Username")
+// }
