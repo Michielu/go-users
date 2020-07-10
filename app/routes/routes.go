@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/Michielu/go-users/app/controllers/account"
-	"github.com/Michielu/go-users/app/controllers/authentication"
+	"github.com/Michielu/go-users/app/services/account"
+	"github.com/Michielu/go-users/app/services/authentication"
 
 	"github.com/Michielu/go-users/app/database"
 	"github.com/Michielu/go-users/app/modals"
@@ -21,7 +21,7 @@ func LoadRoutes(db *database.Database) *mux.Router {
 	// router.MethodNotAllowed = http.HandleFunc("/", MethodNotAllowed)
 
 	//Users
-	router.HandleFunc("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/users/{userId}", func(w http.ResponseWriter, r *http.Request) {
 		account.GetUserHandler(w, r, db)
 	})
 
