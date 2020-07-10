@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -43,12 +44,12 @@ func Connect() (*Database, error) {
 	return &Database{Session: sess, Service: svc}, nil
 }
 
-func (db *Database) GetMasterUser(userId string) (*modals.MasterUser, error) {
+func (db *Database) GetMasterUser(userId string) (*dynamodb.GetItemOutput, error) {
 	svc := *db.Service
 
 	// If a DynamoDB table has a partition key and a sort key, can't use GetItem to get a single item in table.
 	// Need to use Query.
-	result, err := svc.GetItem(&dynamodb.GetItemInput{
+	return svc.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(DB_NAME),
 		Key: map[string]*dynamodb.AttributeValue{
 			"UserId": {
@@ -56,38 +57,29 @@ func (db *Database) GetMasterUser(userId string) (*modals.MasterUser, error) {
 			},
 		},
 	})
-
-	if err != nil {
-		fmt.Println(err.Error())
-		return nil, err
-	}
-
-	masterUser := modals.MasterUser{}
-
-	err = dynamodbattribute.UnmarshalMap(result.Item, &masterUser)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to unmarshal Record, %v", err))
-	}
-
-	return &masterUser, nil
 }
 
 func (db *Database) CreateMasterUser(newMasterUser modals.MasterUser) (*modals.MasterUser, error) {
 	svc := *db.Service
 
-	//TODO remove hardcode
-	item := modals.MasterUser{
-		Apps:      []string{"CREDIT_CARD"},
-		CreatedAt: 12312333333,
-		Email:     "exampleEmail@anotheremail.com",
-		UserId:    "exampleUserID2",
-		Username:  "exampleUsername2",
-		Password:  "exmaplePassword123",
+	//TODO check to see if username exists
+	result, err := svc.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String(DB_NAME),
+		Key: map[string]*dynamodb.AttributeValue{
+			"UserId": {
+				S: aws.String(newMasterUser.Username),
+			},
+		},
+	})
+
+	_, err = checkValidUsername(result, newMasterUser.Username)
+
+	if err != nil {
+		fmt.Println("Username of ", newMasterUser.Username, " exists")
+		return nil, err
 	}
 
-	// fmt.Println(item)
-
-	av, err := dynamodbattribute.MarshalMap(item)
+	av, err := dynamodbattribute.MarshalMap(newMasterUser)
 	if err != nil {
 		fmt.Println("Got error marshalling new master user:")
 		fmt.Println(err.Error())
@@ -106,10 +98,18 @@ func (db *Database) CreateMasterUser(newMasterUser modals.MasterUser) (*modals.M
 		os.Exit(1)
 	}
 
-	fmt.Println("Successfully added '" + item.UserId + "' (" + item.Username + ") to table " + DB_NAME)
+	fmt.Println("Successfully added '" + newMasterUser.UserId + "' (" + newMasterUser.Username + ") to table " + DB_NAME)
 
-	return &item, nil
+	return &newMasterUser, nil
 
+}
+
+func checkValidUsername(result *dynamodb.GetItemOutput, username string) (bool, error) {
+	if len(result.Item) != 0 {
+		fmt.Println("Username of ", username, " exists")
+		return false, errors.New("Invalid Username")
+	}
+	return true, nil
 }
 
 // Close kills the current session and ends the Database connection
