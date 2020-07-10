@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/Michielu/go-users/app/database"
 	"github.com/Michielu/go-users/app/modals"
+	"github.com/Michielu/go-users/app/services/passwords"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/gorilla/mux"
 )
 
@@ -17,7 +20,7 @@ func GetUserHandler(w http.ResponseWriter, r *http.Request, db *database.Databas
 
 	vars := mux.Vars(r)
 
-	item, _ := db.GetMasterUser(vars["id"])
+	item, _ := GetMasterUserFromDb(db, vars["userId"])
 
 	j, err := json.Marshal(item)
 	if err != nil {
@@ -38,10 +41,14 @@ func PostUserHandler(w http.ResponseWriter, r *http.Request, db *database.Databa
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	item, err := db.CreateMasterUser(p)
 
-	fmt.Fprintf(w, "Thing: %+v", p)
+	p.CreatedAt = time.Now().Unix()
+	p.Password = passwords.HashAndSalt([]byte(p.Password))
 
-	item, _ := db.CreateMasterUser(p)
+	if err != nil {
+		fmt.Fprintf(w, "Error: %+v", err)
+	}
 
 	j, err := json.Marshal(item)
 	if err != nil {
@@ -51,4 +58,21 @@ func PostUserHandler(w http.ResponseWriter, r *http.Request, db *database.Databa
 	w.WriteHeader(http.StatusOK)
 	jsonData := []byte(j)
 	w.Write(jsonData)
+}
+
+func GetMasterUserFromDb(db *database.Database, userId string) (*modals.MasterUser, error) {
+	result, err := db.GetMasterUser(userId)
+
+	if err != nil {
+		log.Println(err)
+	}
+
+	masterUser := modals.MasterUser{}
+
+	err = dynamodbattribute.UnmarshalMap(result.Item, &masterUser)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to unmarshal Record, %v", err))
+	}
+
+	return &masterUser, nil
 }
