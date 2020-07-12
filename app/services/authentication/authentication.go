@@ -2,7 +2,6 @@ package authentication
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/Michielu/go-users/app/database"
@@ -14,18 +13,14 @@ import (
 func Login(w http.ResponseWriter, r *http.Request, db *database.Database) {
 	w.Header().Set("Content-Type", "application/json")
 	var p modals.MasterUser
+	var item modals.SimpleResponse
 
 	err := json.NewDecoder(r.Body).Decode(&p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	fmt.Fprintf(w, "Thing: %+v", p)
-
 	masterUser, err := account.GetMasterUserFromDb(db, p.Username)
-
-	item := modals.SimpleResponse{}
 
 	if err != nil {
 		item = modals.SimpleResponse{Success: false, ShortMessage: "Unable to find user with username: " + p.Username}
@@ -40,8 +35,9 @@ func Login(w http.ResponseWriter, r *http.Request, db *database.Database) {
 	}
 
 	if passwords.ComparePasswords(masterUser.Password, []byte(p.Password)) {
-		item = modals.SimpleResponse{Success: true, ShortMessage: "Login username:password: " + p.Username + ":" + p.Password}
-
+		item = modals.SimpleResponse{Success: true, ShortMessage: "Login successful for user: " + p.Username}
+	} else {
+		item = modals.SimpleResponse{Success: false, ShortMessage: "Incorrect password"}
 	}
 
 	j, err := json.Marshal(item)

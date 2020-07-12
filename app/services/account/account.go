@@ -41,10 +41,10 @@ func PostUserHandler(w http.ResponseWriter, r *http.Request, db *database.Databa
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	item, err := db.CreateMasterUser(p)
 
 	p.CreatedAt = time.Now().Unix()
 	p.Password = passwords.HashAndSalt([]byte(p.Password))
+	item, err := db.CreateMasterUser(p)
 
 	if err != nil {
 		fmt.Fprintf(w, "Error: %+v", err)
